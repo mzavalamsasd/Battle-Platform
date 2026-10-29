@@ -1,37 +1,649 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ROLLER</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <meta
+    name="description"
+    content="Your personal music library. Add your songs, browse your collection, and listen."
+  />
+
+  <meta name="theme-color" content="#090b10" />
+
+  <title>Soundspace — Your Music</title>
+
+  <!-- Keep style.css in the same folder as this file. -->
+  <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
+  <main class="app">
+    <header>
+      <div class="brand">
+        soundspace<span>.</span>
+      </div>
 
-  <h1>ROLLER</h1>
+      <button class="primary-button" id="addSongs" type="button">
+        + Add songs
+      </button>
+    </header>
 
-  <canvas id="game" width="800" height="400"></canvas>
+    <section class="hero" aria-labelledby="heroTitle">
+      <div class="eyebrow">Your personal soundtrack</div>
 
-  <p id="message">Loading...</p>
+      <h1 id="heroTitle">
+        Good music.<br />
+        Your collection.
+      </h1>
 
-  <p class="controls">
-    LEFT / RIGHT arrow to roll &nbsp;&middot;&nbsp;
-    SPACE or UP arrow to jump &nbsp;&middot;&nbsp;
-    R to restart
-  </p>
+      <p>
+        Bring your favorite tracks together, find your next listen,
+        and press play.
+      </p>
+    </section>
 
-  <!-- ===================================================================
-       THE ORDER OF THESE FILES MATTERS. Each one uses the ones above it.
-       If you add a new file, add it to this list too, in the right spot.
-       =================================================================== -->
-  <script src="js/config.js"></script>
-  <script src="js/input.js"></script>
-  <script src="js/level.js"></script>
-  <script src="js/collide.js"></script>
-  <script src="js/player.js"></script>
-  <script src="js/draw.js"></script>
-  <script src="js/game.js"></script>
-  <script src="js/main.js"></script>
+    <section aria-labelledby="libraryTitle">
+      <div class="library-header">
+        <div>
+          <h2 id="libraryTitle">Your library</h2>
+          <div class="muted" id="songCount">3 songs</div>
+        </div>
 
+        <input
+          class="search"
+          id="search"
+          type="search"
+          placeholder="Search your songs..."
+          aria-label="Search your songs"
+          autocomplete="off"
+        />
+      </div>
+
+      <input
+        id="fileInput"
+        type="file"
+        accept="audio/*,video/mp4,.mp3,.wav,.ogg,.m4a,.aac,.flac,.opus,.aiff,.webm,.mp4"
+        multiple
+        hidden
+      />
+
+      <div
+        class="drop-zone"
+        id="dropZone"
+        role="button"
+        tabindex="0"
+        aria-label="Choose audio files or drop them here"
+      >
+        Drop audio files here, or click to browse
+      </div>
+
+      <div
+        class="track-list"
+        id="trackList"
+        aria-label="Songs"
+      ></div>
+
+      <div
+        id="status"
+        role="status"
+        aria-live="polite"
+      ></div>
+    </section>
+
+    <noscript>
+      <p>Please enable JavaScript to use the music library and player.</p>
+    </noscript>
+  </main>
+
+  <footer class="player" aria-label="Music player">
+    <div class="player-inner">
+
+      <!-- Currently selected song -->
+      <div class="now-playing">
+        <div class="art" aria-hidden="true">♫</div>
+
+        <div class="now-details">
+          <div class="now-title" id="nowTitle">God's Plan</div>
+          <div class="track-subtitle" id="nowArtist">Drake</div>
+        </div>
+      </div>
+
+      <!-- Playback controls and progress -->
+      <div>
+        <div class="controls">
+          <button
+            class="control-button"
+            id="previous"
+            type="button"
+            aria-label="Previous song"
+            title="Previous song"
+          >
+            ⏮
+          </button>
+
+          <button
+            class="control-button play-button"
+            id="playPause"
+            type="button"
+            aria-label="Play"
+            title="Play"
+          >
+            ▶
+          </button>
+
+          <button
+            class="control-button"
+            id="next"
+            type="button"
+            aria-label="Next song"
+            title="Next song"
+          >
+            ⏭
+          </button>
+
+          <button
+            class="control-button"
+            id="loopButton"
+            type="button"
+            aria-label="Loop mode: Off"
+            title="Loop: Off (Click to toggle)"
+          >
+            🔁
+          </button>
+        </div>
+
+        <div class="timeline">
+          <span id="currentTime">0:00</span>
+
+          <input
+            id="seek"
+            type="range"
+            min="0"
+            max="100"
+            step="0.1"
+            value="0"
+            aria-label="Song position"
+          />
+
+          <span id="duration">0:00</span>
+        </div>
+      </div>
+
+      <!-- Volume -->
+      <div class="volume">
+        <span aria-hidden="true">♫</span>
+
+        <input
+          id="volume"
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          value="0.8"
+          aria-label="Volume"
+        />
+      </div>
+
+    </div>
+  </footer>
+
+  <audio id="audio" preload="metadata"></audio>
+
+  <script>
+    const starterSongs = [
+      {
+        title: "God's Plan",
+        artist: "Drake",
+        src: "Drake-God-s-Plan-Clean-Lyrics.mp4"
+      },
+      {
+        title: "Babydoll",
+        artist: "Dominic Fike",
+        src: "Dominic-Fike-Babydoll-Lyrics.mp4"
+      },
+      {
+        title: "FE!N",
+        artist: "Travis Scott",
+        src: "Travis Scott - FE!N (Lyrics).mp4"
+      }
+    ];
+
+    const $ = (id) => document.getElementById(id);
+
+    const audio = $("audio");
+    const fileInput = $("fileInput");
+    const trackList = $("trackList");
+    const dropZone = $("dropZone");
+    const search = $("search");
+    const seek = $("seek");
+    const loopBtn = $("loopButton");
+
+    let songs = starterSongs.map((song, index) => ({
+      ...song,
+      id: `starter-${index}`,
+      local: false
+    }));
+
+    let currentId = songs[0]?.id || null;
+    let nextId = 0;
+    let dragDepth = 0;
+
+    // Loop modes: "off" | "all" | "one"
+    let loopMode = "off";
+
+    audio.volume = Number($("volume").value);
+    if (songs[0]) {
+      audio.src = songs[0].src;
+    }
+
+    function formatTime(seconds) {
+      if (!Number.isFinite(seconds) || seconds < 0) {
+        return "0:00";
+      }
+
+      const minutes = Math.floor(seconds / 60);
+      const remainingSeconds = Math.floor(seconds % 60);
+
+      return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
+    }
+
+    function getCurrentIndex() {
+      return songs.findIndex((song) => song.id === currentId);
+    }
+
+    function setStatus(message) {
+      $("status").textContent = message;
+    }
+
+    function updateLoopUI() {
+      if (loopMode === "off") {
+        loopBtn.textContent = "🔁";
+        loopBtn.classList.remove("selected");
+        loopBtn.setAttribute("aria-label", "Loop mode: Off");
+        loopBtn.title = "Loop: Off (Click for Loop All)";
+      } else if (loopMode === "all") {
+        loopBtn.textContent = "🔁";
+        loopBtn.classList.add("selected");
+        loopBtn.setAttribute("aria-label", "Loop mode: All");
+        loopBtn.title = "Loop: All (Click for Loop One)";
+      } else if (loopMode === "one") {
+        loopBtn.textContent = "🔂";
+        loopBtn.classList.add("selected");
+        loopBtn.setAttribute("aria-label", "Loop mode: One");
+        loopBtn.title = "Loop: Current Song (Click to Turn Off)";
+      }
+    }
+
+    function updateControls() {
+      const hasSongs = songs.length > 0;
+      const playing = currentId !== null && !audio.paused;
+
+      $("playPause").disabled = !hasSongs;
+      $("previous").disabled = !hasSongs;
+      $("next").disabled = !hasSongs;
+
+      $("playPause").textContent = playing ? "❚❚" : "▶";
+      $("playPause").setAttribute("aria-label", playing ? "Pause" : "Play");
+      $("playPause").title = playing ? "Pause" : "Play";
+
+      document.querySelectorAll(".track").forEach((row) => {
+        const active = row.dataset.songId === currentId;
+        const rowPlaying = active && !audio.paused;
+        const button = row.querySelector(".track-play");
+        const song = songs.find((item) => item.id === row.dataset.songId);
+
+        row.classList.toggle("active", active);
+        button.textContent = rowPlaying ? "❚❚" : "▶";
+
+        if (song) {
+          button.setAttribute(
+            "aria-label",
+            `${rowPlaying ? "Pause" : "Play"} ${song.title}`
+          );
+        }
+      });
+    }
+
+    function renderLibrary() {
+      const query = search.value.trim().toLowerCase();
+
+      const visibleSongs = songs.filter((song) =>
+        `${song.title} ${song.artist || ""}`
+          .toLowerCase()
+          .includes(query)
+      );
+
+      $("songCount").textContent =
+        `${songs.length} song${songs.length === 1 ? "" : "s"}`;
+
+      trackList.replaceChildren();
+
+      if (visibleSongs.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = songs.length
+          ? "No songs match your search."
+          : "Your library is waiting. Add some songs to get started.";
+        trackList.append(empty);
+      }
+
+      for (const song of visibleSongs) {
+        const row = document.createElement("div");
+        row.className = "track";
+        row.dataset.songId = song.id;
+
+        const playButton = document.createElement("button");
+        playButton.className = "track-play";
+        playButton.type = "button";
+
+        playButton.addEventListener("click", () => {
+          if (song.id === currentId) {
+            togglePlayback();
+          } else {
+            playSong(song.id);
+          }
+        });
+
+        const details = document.createElement("div");
+        details.className = "track-details";
+
+        const title = document.createElement("div");
+        title.className = "track-title";
+        title.textContent = song.title;
+
+        const subtitle = document.createElement("div");
+        subtitle.className = "track-subtitle";
+        subtitle.textContent = song.artist || "Unknown artist";
+
+        details.append(title, subtitle);
+
+        const removeButton = document.createElement("button");
+        removeButton.className = "remove-button";
+        removeButton.type = "button";
+        removeButton.textContent = "✕";
+        removeButton.setAttribute("aria-label", `Remove ${song.title}`);
+
+        removeButton.addEventListener("click", () => {
+          removeSong(song.id);
+        });
+
+        row.append(playButton, details, removeButton);
+        trackList.append(row);
+      }
+
+      updateControls();
+    }
+
+    async function startPlayback() {
+      const requestedId = currentId;
+
+      try {
+        await audio.play();
+
+        if (currentId === requestedId) {
+          setStatus("");
+        }
+      } catch (error) {
+        if (error.name === "AbortError" || currentId !== requestedId) {
+          return;
+        }
+
+        setStatus(
+          "Could not play this song. Check that the file is in your website folder."
+        );
+      }
+
+      updateControls();
+    }
+
+    function playSong(id) {
+      const song = songs.find((item) => item.id === id);
+      if (!song) return;
+
+      currentId = id;
+      if (audio.src !== song.src) {
+        audio.src = song.src;
+      }
+
+      $("nowTitle").textContent = song.title;
+      $("nowArtist").textContent = song.artist || "Unknown artist";
+      $("currentTime").textContent = "0:00";
+      $("duration").textContent = "0:00";
+
+      seek.value = 0;
+      seek.disabled = true;
+
+      setStatus("");
+      renderLibrary();
+      startPlayback();
+    }
+
+    function togglePlayback() {
+      if (songs.length === 0) return;
+
+      if (currentId === null) {
+        playSong(songs[0].id);
+      } else if (audio.paused) {
+        startPlayback();
+      } else {
+        audio.pause();
+      }
+    }
+
+    function skip(direction) {
+      if (songs.length === 0) return;
+
+      const currentIndex = getCurrentIndex();
+      if (currentIndex < 0) {
+        playSong(songs[0].id);
+        return;
+      }
+
+      const nextIndex =
+        (currentIndex + direction + songs.length) % songs.length;
+
+      playSong(songs[nextIndex].id);
+    }
+
+    function resetPlayer() {
+      currentId = null;
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+
+      $("nowTitle").textContent = "Choose a song";
+      $("nowArtist").textContent = "Your music, your space";
+      $("currentTime").textContent = "0:00";
+      $("duration").textContent = "0:00";
+
+      seek.value = 0;
+      seek.disabled = true;
+
+      updateControls();
+    }
+
+    function removeSong(id) {
+      const index = songs.findIndex((song) => song.id === id);
+      if (index < 0) return;
+
+      const song = songs[index];
+      if (id === currentId) {
+        resetPlayer();
+      }
+
+      if (song.local) {
+        URL.revokeObjectURL(song.src);
+      }
+
+      songs.splice(index, 1);
+      renderLibrary();
+
+      setStatus(`Removed "${song.title}" from your library.`);
+    }
+
+    function addFiles(fileList) {
+      const files = Array.from(fileList);
+      let added = 0;
+
+      for (const file of files) {
+        const looksLikeMedia =
+          file.type.startsWith("audio/") ||
+          file.type.startsWith("video/") ||
+          /\.(mp3|wav|ogg|m4a|aac|flac|opus|aiff|webm|mp4)$/i.test(file.name);
+
+        if (!looksLikeMedia) continue;
+
+        const name = file.name.replace(/\.[^.]+$/, "");
+        const separator = name.indexOf(" - ");
+
+        const artist = separator > 0
+          ? name.slice(0, separator).trim()
+          : "Local audio";
+
+        const title = separator > 0
+          ? name.slice(separator + 3).trim()
+          : name;
+
+        songs.push({
+          id: `local-${nextId++}`,
+          title: title || file.name,
+          artist,
+          src: URL.createObjectURL(file),
+          local: true
+        });
+
+        added++;
+      }
+
+      renderLibrary();
+
+      const skipped = files.length - added;
+      setStatus(
+        `${added} song${added === 1 ? "" : "s"} added.` +
+        (skipped ? ` ${skipped} non-audio file${skipped === 1 ? "" : "s"} skipped.` : "")
+      );
+    }
+
+    // File selection
+    $("addSongs").addEventListener("click", () => fileInput.click());
+
+    fileInput.addEventListener("change", () => {
+      addFiles(fileInput.files);
+      fileInput.value = "";
+    });
+
+    dropZone.addEventListener("click", () => fileInput.click());
+
+    dropZone.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        fileInput.click();
+      }
+    });
+
+    // Drag and drop
+    dropZone.addEventListener("dragenter", (event) => {
+      event.preventDefault();
+      dragDepth++;
+      dropZone.classList.add("dragging");
+    });
+
+    dropZone.addEventListener("dragover", (event) => {
+      event.preventDefault();
+    });
+
+    dropZone.addEventListener("dragleave", () => {
+      dragDepth = Math.max(0, dragDepth - 1);
+      if (dragDepth === 0) {
+        dropZone.classList.remove("dragging");
+      }
+    });
+
+    dropZone.addEventListener("drop", (event) => {
+      event.preventDefault();
+      dragDepth = 0;
+      dropZone.classList.remove("dragging");
+      addFiles(event.dataTransfer.files);
+    });
+
+    // Search and controls
+    search.addEventListener("input", renderLibrary);
+    $("playPause").addEventListener("click", togglePlayback);
+    $("previous").addEventListener("click", () => skip(-1));
+    $("next").addEventListener("click", () => skip(1));
+
+    // Loop button: toggles Off -> Loop All -> Loop One -> Off
+    loopBtn.addEventListener("click", () => {
+      if (loopMode === "off") {
+        loopMode = "all";
+      } else if (loopMode === "all") {
+        loopMode = "one";
+      } else {
+        loopMode = "off";
+      }
+      updateLoopUI();
+    });
+
+    // Volume and seeking
+    $("volume").addEventListener("input", (event) => {
+      audio.volume = Number(event.target.value);
+    });
+
+    seek.addEventListener("input", () => {
+      if (Number.isFinite(audio.duration) && audio.duration > 0) {
+        audio.currentTime = (Number(seek.value) / 100) * audio.duration;
+      }
+    });
+
+    function updateDuration() {
+      $("duration").textContent = formatTime(audio.duration);
+      seek.disabled = !Number.isFinite(audio.duration) || audio.duration <= 0;
+    }
+
+    audio.addEventListener("loadedmetadata", updateDuration);
+    audio.addEventListener("durationchange", updateDuration);
+
+    audio.addEventListener("timeupdate", () => {
+      $("currentTime").textContent = formatTime(audio.currentTime);
+      seek.value =
+        Number.isFinite(audio.duration) && audio.duration > 0
+          ? (audio.currentTime / audio.duration) * 100
+          : 0;
+    });
+
+    audio.addEventListener("play", updateControls);
+    audio.addEventListener("pause", updateControls);
+
+    // Track finish behavior with loop logic
+    audio.addEventListener("ended", () => {
+      if (loopMode === "one") {
+        audio.currentTime = 0;
+        startPlayback();
+        return;
+      }
+
+      const index = getCurrentIndex();
+      if (index >= 0 && index < songs.length - 1) {
+        playSong(songs[index + 1].id);
+      } else if (loopMode === "all" && songs.length > 0) {
+        playSong(songs[0].id);
+      } else {
+        updateControls();
+      }
+    });
+
+    audio.addEventListener("error", () => {
+      if (currentId !== null) {
+        setStatus(
+          "This track could not be loaded. Please ensure the file is in your website folder."
+        );
+      }
+      updateControls();
+    });
+
+    updateLoopUI();
+    renderLibrary();
+  </script>
 </body>
 </html>
